@@ -4,14 +4,14 @@ Converts a microplate reader's XML export into an XLSX workbook, one sheet per p
 
 The input file is SpreadsheetML 2003: XML that describes a spreadsheet, one row and cell at a time. It can hold several plates below each other on one worksheet, each starting with a "Plate" header row. The script finds them and copies each one to its own sheet of a new .xlsx file, keeping the cells and their formatting as they were.
 
-## Scope
+### Scope
 
 - This is a small tool for our own plate data. It knows the layout our reader produces and it relies on that layout.
 - It is **not** a general XML to XLSX converter. If you give it a file from somewhere else, it will most likely find no plates and write nothing.
 - It does not interpret the data in any way.
 - It is intentionally provided as a standalone script, not a python package.
 
-## How to run it
+### How to run it
 
 Needs [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
