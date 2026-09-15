@@ -66,6 +66,6 @@ uv run xml2xlsx -i plates.xml -o plates.xlsx
 uv run xml2xlsx-gui
 ```
 
-### Disclaimer
+## Disclaimer
 
 The GUI was built by Claude Opus 5.
