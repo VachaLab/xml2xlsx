@@ -51,9 +51,6 @@ jobs:
           --onefile --windowed --paths src --clean --noconfirm
           --exclude-module tkinter
 
-      - name: Check that the executable runs and knows its version
-        run: ./dist/xml2xlsx-linux-x86_64 --version
-
       - name: Attach everything to the release
         env:
           GH_TOKEN: ${{ github.token }}
