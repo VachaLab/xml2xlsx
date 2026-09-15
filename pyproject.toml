@@ -1,6 +1,6 @@
 [project]
 name = "xml2xlsx"
-description = "Convert plate reader XML exports to XLSX, one plate per sheet."
+description = "Convert plate reader XML exports to XLSX."
 requires-python = ">=3.13"
 license = { text = "MIT" }
 authors = [{ name = "Ladislav Bartos" }]

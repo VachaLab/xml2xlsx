@@ -27,7 +27,7 @@ curl -Lo ~/.local/bin/xml2xlsx https://github.com/VachaLab/xml2xlsx/releases/lat
 chmod u+x ~/.local/bin/xml2xlsx-gui ~/.local/bin/xml2xlsx
 ```
 
-That URL always points at the newest release, so running it again updates. If `xml2xlsx-gui` is not found afterwards, `~/.local/bin` is not on your `PATH`.
+That URL always points at the newest release, so running it again updates. If `xml2xlsx-gui` is not found afterwards, `~/.local/bin` is not in your `PATH`.
 
 Both files are also on the [releases page](https://github.com/VachaLab/xml2xlsx/releases/latest) if you would rather click.
 
@@ -39,7 +39,7 @@ xml2xlsx-gui
 
 Drop XML files onto it, or click to pick them. Press Convert and choose where to save. Every plate gets a line in the table saying what happened to it.
 
-### CLI
+## CLI
 
 ```bash
 xml2xlsx -i plates.xml -o plates.xlsx
