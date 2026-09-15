@@ -20,8 +20,16 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install the libraries Qt links against
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0
+
       - name: Check that Qt is usable
-        run: uv run python -c "import PyQt6.QtWidgets"
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run python -c "from PyQt6.QtWidgets import QApplication; QApplication([])"
 
       - name: Build the wheel
         run: uv build
