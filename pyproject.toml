@@ -1,0 +1,36 @@
+[project]
+name = "xml2xlsx"
+description = "Convert plate reader XML exports to XLSX, one plate per sheet."
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "Ladislav Bartos" }]
+dependencies = [
+    "openpyxl>=3.1.5",
+    "pyqt6>=6.4.2",
+    "pyqt6-qt6<6.5",
+]
+dynamic = ["version"]
+
+[project.scripts]
+xml2xlsx = "xml2xlsx.cli:main"
+
+[project.gui-scripts]
+xml2xlsx-gui = "xml2xlsx.gui:main"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/xml2xlsx/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xml2xlsx"]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.22.3",
+]

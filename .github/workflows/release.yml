@@ -1,0 +1,57 @@
+name: Build and Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check that Qt is usable
+        run: uv run python -c "import PyQt6.QtWidgets"
+
+      - name: Build the wheel
+        run: uv build
+
+      - name: Report the version
+        run: uv run python -c "import xml2xlsx; print(xml2xlsx.__version__)"
+
+      - name: Build the command line executable
+        run: >
+          uv run --with pyinstaller pyinstaller run_cli.py
+          --name xml2xlsx-linux-x86_64
+          --onefile --console --paths src --clean --noconfirm
+          --exclude-module PyQt6 --exclude-module tkinter
+
+      - name: Build the window executable
+        run: >
+          uv run --with pyinstaller pyinstaller run_gui.py
+          --name xml2xlsx-gui-linux-x86_64
+          --onefile --windowed --paths src --clean --noconfirm
+          --exclude-module tkinter
+
+      - name: Check that the executable runs and knows its version
+        run: ./dist/xml2xlsx-linux-x86_64 --version
+
+      - name: Attach everything to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release upload "${{ github.event.release.tag_name }}"
+          dist/xml2xlsx-linux-x86_64
+          dist/xml2xlsx-gui-linux-x86_64
+          dist/*.whl dist/*.tar.gz
+          --clobber

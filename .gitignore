@@ -1,1 +1,8 @@
-.venv
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+
+# generated from the git tag at build time
+src/xml2xlsx/_version.py

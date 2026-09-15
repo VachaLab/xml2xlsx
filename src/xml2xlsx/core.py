@@ -1,15 +1,5 @@
-#!/usr/bin/env -S uv run --script
-
-# Released under MIT License.
+# Released under GPL3 License.
 # Copyright (c) 2026 Ladislav Bartos and Robert Vacha Lab
-# Version 2026/09/14
-
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "openpyxl>=3.1.5",
-# ]
-# ///
 
 """
 Convert a microplate reader's XML export into an XLSX workbook.
@@ -19,57 +9,9 @@ one row and cell at a time. It can hold several plates below each other
 on one worksheet, each starting with a "Plate" header row. The script
 finds them and copies each one to its own sheet of a new .xlsx file,
 keeping the cells and their formatting as they were.
-
-## How to run it
-
-To run this script, you need a tool called `uv` installed on your computer.
-Go to https://docs.astral.sh/uv/getting-started/installation/
-and copy the first command you see there to the terminal.
-
-Currently (as of September 2026), the command to install uv is:
-
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-
-Once you install uv, open a _new_ terminal in the folder containing this script.
-
-Make the script executable:
-
-    chmod u+x xml2xlsx.py
-
-You only need to do all of the above once on a computer.
-
-Then you can run the script as:
-
-   ./xml2xlsx.py -i plates.xml -o plates.xlsx
-
-After -i comes the file to read, after -o the file to write. Instead of
-typing a long path, you can drag a file from the file manager onto the
-terminal window and its path will be pasted in.
-
-You can also provide...
-
-...multiple input files at once. These will be merged into one workbook:
-
-    ./xml2xlsx.py -i plates1.xml plates2.xml -o merged.xlsx
-
-...or a whole folder of input files. In this case, all .xml files
-_directly_ inside this folder are read:
-
-    ./xml2xlsx.py -i exports -o merged.xlsx
-
-The script prints one line per plate saying what happened to it.
-
-A plate with no readings in it is skipped as well as a plate with
-a name that has already been used because these typically correspond
-to the same plate exported twice. If the values in the two copies disagree,
-the script warns about it.
-
-If the output file already exists it is overwritten without asking.
 """
 
-import argparse
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree.ElementTree import Element, ParseError, parse
@@ -106,6 +48,9 @@ NUMBER_FORMATS = {"general date": "m/d/yyyy h:mm:ss"}
 
 # the XML gives column widths in points, openpyxl wants them in characters
 POINTS_PER_CHARACTER = 5.25
+
+# columns of the report table, in order
+REPORT_HEADERS = ("sheet", "plate", "experiment", "read time", "source", "status")
 
 
 def tag(name: str) -> str:
@@ -661,6 +606,10 @@ def convert(sources: list[Path], destination: Path) -> list[tuple[str, ...]]:
 
     Returns:
         One row per plate: sheet, plate, experiment, read time, source, status.
+
+    Raises:
+        OSError: If the workbook cannot be written, for instance because
+            the destination is already open in Excel.
     """
     workbook = Workbook()
     # a new workbook opens with one sheet already in it; we remove it
@@ -709,80 +658,69 @@ def convert(sources: list[Path], destination: Path) -> list[tuple[str, ...]]:
     return report
 
 
-def print_report(report: list[tuple[str, ...]], destination: Path) -> int:
-    """
-    Print the report table and a summary. Return a process exit code.
-
-    Every plate encountered gets a line, written or not, so a missing
-    plate can be traced to the reason it was dropped.
-    """
-    headers = ("sheet", "plate", "experiment", "read time", "source", "status")
-    table = [headers, *report]
+def format_table(report: list[tuple[str, ...]]) -> list[str]:
+    """The report as lines of a padded table, header row first."""
+    table = [REPORT_HEADERS, *report]
     # pad each column to its widest entry, header included
-    widths = [max(len(row[column]) for row in table) for column in range(len(headers))]
+    widths = [
+        max(len(row[column]) for row in table) for column in range(len(REPORT_HEADERS))
+    ]
 
-    for row in table:
-        print("  ".join(text.ljust(width) for text, width in zip(row, widths)).rstrip())
-
-    statuses = [row[-1] for row in report]
-    written = statuses.count("written")
-    errors = sum(1 for status in statuses if status.startswith("error"))
-    differing = sum(1 for status in statuses if status.startswith("warning"))
-    # unreadable files contribute a row each but no plates
-    files = len({row[-2] for row in report}) - errors
-
-    if written:
-        summary = f"\nwrote {destination}: {written} sheet(s) from {files} file(s)"
-    else:
-        summary = "\nnothing written: no plate with well data was found"
-    if skipped := len(statuses) - written - errors:
-        summary += f", {skipped} plate(s) skipped"
-    if differing:
-        summary += f" ({differing} with differing values)"
-    if errors:
-        summary += f", {errors} file(s) unreadable"
-    print(summary)
-    return 1 if errors or not written else 0
+    return [
+        "  ".join(text.ljust(width) for text, width in zip(row, widths)).rstrip()
+        for row in table
+    ]
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Parse arguments, convert, report; return a process exit code."""
-    parser = argparse.ArgumentParser(
-        description="Convert an XML file exported from a microplate reader "
-        "to an XLSX file where each plate is a sheet."
-    )
-    parser.add_argument(
-        "--input",
-        "-i",
-        dest="inputs",
-        type=Path,
-        nargs="+",
-        action="extend",
-        required=True,
-        metavar="PATH",
-        help="XML export, or a directory of them; repeatable, order is kept",
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=Path,
-        required=True,
-        metavar="PATH",
-        help="XLSX file to write",
-    )
-    arguments = parser.parse_args(argv)
+@dataclass(frozen=True)
+class Summary:
+    """
+    What a run came to, counted from its report.
 
-    # directories expand to their XML files, sorted
-    # loose paths are kept where they were given, since input order decides which duplicate wins
-    sources: list[Path] = []
-    for path in arguments.inputs:
-        sources.extend(sorted(path.glob("*.xml")) if path.is_dir() else [path])
-    if not sources:
-        print("error: no XML files among the given inputs", file=sys.stderr)
-        return 1
+    Attributes:
+        written: Plates written to a sheet.
+        skipped: Plates left out, whether empty or duplicated.
+        differing: Duplicates whose values did not match.
+        errors: Files that could not be read.
+        files: Files that were read.
+    """
 
-    return print_report(convert(sources, arguments.output), arguments.output)
+    written: int
+    skipped: int
+    differing: int
+    errors: int
+    files: int
 
+    @classmethod
+    def of(cls, report: list[tuple[str, ...]]) -> "Summary":
+        """Count up one report."""
+        statuses = [row[-1] for row in report]
+        written = statuses.count("written")
+        errors = sum(1 for status in statuses if status.startswith("error"))
 
-if __name__ == "__main__":
-    main()
+        return cls(
+            written=written,
+            skipped=len(statuses) - written - errors,
+            differing=sum(1 for status in statuses if status.startswith("warning")),
+            errors=errors,
+            # unreadable files contribute a row each but no plates
+            files=len({row[-2] for row in report}) - errors,
+        )
+
+    def text(self, destination: Path) -> str:
+        """The one-line summary shown after a run."""
+        if self.written:
+            summary = (
+                f"wrote {destination}: {self.written} sheet(s) "
+                f"from {self.files} file(s)"
+            )
+        else:
+            summary = "nothing written: no plate with well data was found"
+        if self.skipped:
+            summary += f", {self.skipped} plate(s) skipped"
+        if self.differing:
+            summary += f" ({self.differing} with differing values)"
+        if self.errors:
+            summary += f", {self.errors} file(s) unreadable"
+
+        return summary
