@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ._version import __version__
+from . import __version__
 from .core import Summary, convert
 
 
